@@ -94,14 +94,14 @@ const WORDS = [
   tip:"英作文の「理由」で大活躍！ 主語に物を置いて「〇〇のおかげで人が〜できる」と書ける。",
   quiz:{q:"Smartphones ___ students to study anywhere.",ja:"スマホのおかげで、生徒はどこでも勉強できる。",ans:"allow",
    dis:[["approve","承認する：「人が〜するのを」の形をとらない"],["arrange","手配する：allow A to 〜 の形にならない"],["attend","出席する：後ろに人＋to〜は来ない"]]},
-  order:{ja:"このアプリのおかげで、私たちは英語を楽しく勉強できる。",en:"This app allows us to study English happily .",dummy:"for",dummyWhy:"allow 人 <b>to</b> 動詞。for は使わない",alt:"This app lets us study English happily.",altNote:"let なら to を消す"},
+  order:{ja:"このアプリのおかげで、私たちは英語を楽しく勉強できる。",en:"This app allows us to study English happily .",accept:["This app allows us to happily study English ."],dummy:"for",dummyWhy:"allow 人 <b>to</b> 動詞。for は使わない",alt:"This app lets us study English happily.",altNote:"let なら to を消す"},
   rel:[{tag:"似た言葉",w:"let",note:"let 人 ＋ 動詞の原形（<b>to はつけない！</b>）",ex:"My parents let me go to the concert."},
    {tag:"似た言葉",w:"permit",note:"permit 人 to 〜（かたい言い方・規則や掲示で）"},
    {tag:"反対（参考）",w:"forbid",note:"〜を禁止する"}],
   relWhy:"allow と let は意味が同じでも形がちがう（to の有無）。英作文でいちばんまちがえやすいので、似た言葉とセットで。",
   trans:{ja:"オンライン授業のおかげで、生徒は家で学ぶことができる。",
    model:["Online classes allow students to learn at home.","Online lessons allow students to study at home."],
-   need:[/allow(s|ed)?\s+\w+\s+to\s+\w+/i], needLabel:"allow ＋ 人 ＋ to 動詞 の形"}},
+   need:[/allow(s|ed|ing)?\s+(\w+\s+){1,3}to\s+\w+/i], needLabel:"allow ＋ 人 ＋ to 動詞 の形"}},
  {w:"available", pos:"形容詞", mean:"利用できる／手に入る",
   pattern:"<b>be available</b>（利用できる） / <b>available in ＋ 言語</b>（〜語で利用できる） / <b>available online</b>",
   ex:[{en:"Many books are available online.",ja:"多くの本がネットで手に入る。"}],
@@ -115,7 +115,7 @@ const WORDS = [
   relWhy:"available は意味が広い。場面ごとの言い換えで覚えると、英検の言い換え問題に強くなる。",
   trans:{ja:"今では多くの映画がネットで見られる（利用できる）。",
    model:["Now many movies are available online.","Many movies are now available on the Internet."],
-   need:[/\b(is|are|be)\s+(now\s+)?available\b/i], needLabel:"be動詞 ＋ available"}},
+   need:[/\b(is|are|was|were|be|been)\s+(\w+\s+)?available\b/i], needLabel:"be動詞 ＋ available"}},
  {w:"aware", pos:"形容詞", mean:"気づいている／知っている",
   pattern:"<b>be aware of 〜</b>（〜に気づいている・〜を意識している）",
   ex:[{en:"People should be aware of the dangers of plastic.",ja:"人々はプラスチックの危険を意識するべきだ。"}],
@@ -129,21 +129,21 @@ const WORDS = [
   relWhy:"英検の長文やリスニングでは、aware が know / realize に言い換えられて出る。",
   trans:{ja:"多くの人が健康の大切さに気づいている。",
    model:["Many people are aware of the importance of health.","A lot of people are aware of how important health is."],
-   need:[/aware\s+of/i], needLabel:"aware of の形"}},
+   need:[/aware\s+(of|that)\b/i], needLabel:"aware of 〜（aware that 文 でもOK）"}},
  {w:"although", pos:"接続詞", mean:"～だけれども",
   pattern:"<b>Although S V, S V.</b>（〜だけれども、…だ）※後ろは文。名詞なら Despite",
   ex:[{en:"Although it is expensive, it is very useful.",ja:"高いけれども、とても役に立つ。"}],
   tip:"反対意見に一言ふれてから自分の意見を言うと、英作文の説得力アップ。but を連発しない工夫にも。",
   quiz:{q:"___ it was raining, we played soccer.",ja:"雨が降っていたけれど、私たちはサッカーをした。",ans:"Although",
    dis:[["Because","〜なので：『雨だったからサッカーした』は逆の意味"],["Unless","〜しない限り：過去の事実には合わない"],["If","もし〜なら：過去の事実には合わない"]]},
-  order:{ja:"疲れていたけれど、彼は宿題を終えた。",en:"Although he was tired , he finished his homework .",dummy:"Despite",dummyWhy:"後ろが文（he was tired）なら <b>Although</b>。Despite の後ろは名詞",alt:"Even though he was tired, he finished his homework.",altNote:"even though でも同じ形"},
+  order:{ja:"疲れていたけれど、彼は宿題を終えた。",en:"Although he was tired , he finished his homework .",accept:["he finished his homework , although he was tired ."],dummy:"Despite",dummyWhy:"後ろが文（he was tired）なら <b>Although</b>。Despite の後ろは名詞",alt:"Even though he was tired, he finished his homework.",altNote:"even though でも同じ形"},
   rel:[{tag:"同じ使い方",w:"though / even though",note:"although と同じく後ろに文（even though は意味が強め）"},
    {tag:"紛らわしい",w:"despite / in spite of",note:"意味は同じでも、後ろは<b>名詞</b>（Despite the rain）"},
    {tag:"似た意味",w:"but",note:"文の途中でつなぐ（He was tired, but he 〜）"}],
   relWhy:"although に反対語はない。代わりに『意味は同じでも形がちがう語』を整理するのがいちばん役立つ。",
   trans:{ja:"スマホは便利だけれど、使いすぎるのはよくない。",
    model:["Although smartphones are useful, using them too much is not good.","Although smartphones are convenient, we should not use them too much."],
-   need:[/^\s*although\b[^,]+,/i], needLabel:"Although ～, の形（カンマを忘れずに）"}},
+   need:[/(^\s*although\b[^,]+,)|([a-z,]\s+although\s+\w+)/i], needLabel:"although ＋ 文（文の最初に置くなら Although ～, とカンマ）"}},
  {w:"attract", pos:"動詞", mean:"～を引きつける／集める",
   pattern:"<b>attract A</b>（Aを引きつける） / <b>attract attention</b>（注目を集める） / <b>attract tourists</b>",
   ex:[{en:"The festival attracts many tourists every year.",ja:"その祭りは毎年多くの観光客を集める。"}],
@@ -301,6 +301,12 @@ function stepQuiz(){const o=WORDS[wi()],z=o.quiz;
    <button class="btn primary" onclick="next()">次へ</button>`;});}
 
 // ③ ならべる（並べ替え）
+// 正解の判定：①模範の語順 ②登録した別解 ③「名詞 and 名詞」の入れかえ（English and Japanese ⇄ Japanese and English）
+function orderVariants(o){const base=[o.order.en,...(o.order.accept||[])],out=new Set();
+ base.forEach(e=>{out.add(e.toLowerCase());const t=e.split(" ");t.forEach((w,i)=>{if(w==="and"&&i>0&&i<t.length-1&&/^[A-Za-z']+$/.test(t[i-1])&&/^[A-Za-z']+$/.test(t[i+1])){const u=[...t];[u[i-1],u[i+1]]=[t[i+1],t[i-1]];out.add(u.join(" ").toLowerCase())}})});
+ return out}
+function orderOk(o,mine){return orderVariants(o).has(mine.toLowerCase())}
+function capFirst(x){return x.charAt(0).toUpperCase()+x.slice(1)}
 function stepOrder(){const o=WORDS[wi()],tokens=o.order.en.split(" ");let pool=shuffle([...tokens,...(o.order.dummy?[o.order.dummy]:[])].map((t,k)=>({t,k}))),ans=[],done=false;
  const draw=()=>{$("#app").innerHTML=`${prog()}<div class="card"><div class="small">日本語に合うように、タップして英文を組み立てよう<br>⚠️ <b>使わないカードが1枚</b>まざっているよ（語法に注意！）</div>
   <div class="q">${o.order.ja}</div>
@@ -309,8 +315,9 @@ function stepOrder(){const o=WORDS[wi()],tokens=o.order.en.split(" ");let pool=s
   <div id="fb"></div></div>${ans.length>=tokens.length?'<button class="btn primary" id="chk">答え合わせ</button>':''}`;
   document.querySelectorAll("[data-p]").forEach(e=>e.onclick=()=>{ans.push(pool.splice(e.dataset.p,1)[0]);draw()});
   document.querySelectorAll("[data-a]").forEach(e=>e.onclick=()=>{pool.push(ans.splice(e.dataset.a,1)[0]);draw()});
-  const c=$("#chk");if(c)c.onclick=()=>{const mine=ans.map(p=>p.t).join(" ");const ok=mine===o.order.en;record("order",ok,mine.replace(/ ([.,])/g,"$1"));const sent=o.order.en.replace(/ ([.,])/g,"$1");
-   c.remove();$("#fb").innerHTML=`<div class="fb ${ok?'ok':'ng'}"><b>${ok?'⭕ 正解！':'❌ 惜しい！'}</b><br>正解：${hl(sent)} ${spk(sent)}<br><span class="small">型：${o.pattern}</span>${o.order.dummy?`<div class="expl">🚫 ダミーの「<b>${o.order.dummy}</b>」：${o.order.dummyWhy}</div>`:""}${o.order.alt?`<div class="small" style="margin-top:6px">🔗 言い換えると：${hl(o.order.alt)} ${spk(o.order.alt)}（${o.order.altNote}）</div>`:""}</div>
+  const c=$("#chk");if(c)c.onclick=()=>{const mine=ans.map(p=>p.t).join(" ");const ok=orderOk(o,mine);record("order",ok,mine.replace(/ ([.,])/g,"$1"));const sent=o.order.en.replace(/ ([.,])/g,"$1");
+   c.remove();const mineS=capFirst(mine.replace(/ ([.,])/g,"$1").replace(/(.) Although\b/g,"$1 although")),other=ok&&mine!==o.order.en;
+   $("#fb").innerHTML=`<div class="fb ${ok?'ok':'ng'}"><b>${ok?'⭕ 正解！':'❌ 惜しい！'}</b>${other?`<br>あなたの答え：${hl(mineS)} ${spk(mineS)}<br><span class="small">👍 この語順でも意味は同じなので正解です。教科書的な語順はこちら：</span>`:"<br>正解："}${hl(sent)} ${spk(sent)}<br><span class="small">型：${o.pattern}</span>${o.order.dummy?`<div class="expl">🚫 ダミーの「<b>${o.order.dummy}</b>」：${o.order.dummyWhy}</div>`:""}${o.order.alt?`<div class="small" style="margin-top:6px">🔗 言い換えると：${hl(o.order.alt)} ${spk(o.order.alt)}（${o.order.altNote}）</div>`:""}</div>
    <button class="btn primary" onclick="next()">次へ</button>`;document.querySelectorAll(".tile").forEach(t=>t.onclick=null)};};
  draw();}
 
