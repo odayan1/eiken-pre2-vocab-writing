@@ -53,10 +53,23 @@
   .confetti{position:fixed;top:-10px;width:9px;height:14px;z-index:99;animation:fall linear forwards}
   @keyframes fall{to{transform:translateY(105vh) rotate(720deg)}}
   .lock{opacity:.8;border:2px dashed #a78bfa;background:#faf5ff}
+  .mode{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:#fff;border:2px solid #e0e7ff;border-radius:14px;padding:14px;margin-bottom:10px;font-size:16px;cursor:pointer;font-family:inherit;color:inherit}
+  .mode:active{background:#eef2ff}.mi{font-size:30px}
+  .part{background:#1e3a8a;color:#fff;border-radius:8px;padding:8px 12px;font-weight:bold;margin-bottom:10px;font-size:14px}
+  .fbcard{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;border-left:5px solid #ef4444;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+  .fbcard.ok{border-left-color:#10b981}
+  .expl{background:#fffbeb;border-radius:8px;padding:10px;margin-top:8px;font-size:14px;line-height:1.7}
+  .near{background:#fde68a;border-radius:6px;padding:1px 6px;font-size:12px;text-decoration:none;display:inline-block}
+  .typebox{flex:1;text-align:center;background:#eef2ff;border-radius:8px;padding:6px}
+  .plan{border-top:1px solid #e5e7eb;padding:10px 0}
+  .starter{background:#f9fafb;border-radius:8px;padding:8px;margin-top:4px;font-size:15px}
+  .chip{display:inline-block;font-size:13px;background:#f3f4f6;border-radius:12px;padding:3px 9px;margin:2px}
+  .chip.on{background:#d1fae5}
+  header{cursor:pointer}
 </style>
 </head>
 <body>
-<header>
+<header onclick="if(S.mode==='home'||confirm('ホームに戻りますか？'))home()">
   <h1>英検準2級 書ける単語マスター <span style="font-size:12px;background:#fff3;padding:2px 6px;border-radius:6px">お試し版</span></h1>
   <p>覚えた単語を、そのまま英作文で使えるようにするアプリ</p>
 </header>
@@ -118,30 +131,88 @@ const WORDS = [
    need:[/attract(s|ed|ing)?\b/i], needLabel:"attract を使っている"}}
 ];
 
-const ESSAY = {
-  q:"Do you think students should use tablets at school?",
-  ja:"生徒は学校でタブレットを使うべきだと思いますか？（準2級 意見論述：50〜60語・理由2つ）",
-  frame:"I think students should use tablets at school. I have two reasons.\nFirst, tablets ( allow ) ...\nSecond, ... ( available ) ...\nAlthough ..., ...\nFor these reasons, I think ...",
-  model:"I think students should use tablets at school. I have two reasons. First, tablets allow students to find information quickly. Second, many useful learning apps are available online. Although students should be aware of the dangers of using them too much, tablets can attract students to learning. For these reasons, I think tablets are good for students."
-};
+// ===== テストモード用データ（意味・スペル・語法/コロケーション） =====
+const TEST = [
+ // --- スペル ---
+ {w:"allow",type:"スペル",q:"Our school does not ___ students to use phones in class.",ja:"私たちの学校は、授業中に生徒がスマホを使うことを許していない。",ans:"allow",hint:"a で始まる5文字",
+  fb:"allow は <b>l が2つ</b>（a-l-l-o-w）。「アラウ」と読むので alow / arrow と書きまちがえやすい。arrow（矢）とは別の単語！"},
+ {w:"available",type:"スペル",q:"Is this seat ___?",ja:"この席は空いていますか（利用できますか）？",ans:"available",hint:"a で始まる9文字",
+  fb:"a-<b>vai</b>-la-<b>ble</b> の3つに区切って覚えよう。真ん中の <b>ai</b> と、最後の <b>-able</b>（〜できる）がポイント。avail（役立つ）＋ able と考えると忘れにくい。"},
+ {w:"aware",type:"スペル",q:"I wasn't ___ of the problem.",ja:"私はその問題に気づいていなかった。",ans:"aware",hint:"a で始まる5文字",
+  fb:"a ＋ <b>ware</b>。where（どこ）や wear（着る）と混ざりやすい。「a-w-a-r-e」と声に出して3回書こう。"},
+ {w:"although",type:"スペル",q:"___ it was cold, we went swimming.",ja:"寒かったけれど、私たちは泳ぎに行った。",ans:"although",hint:"a で始まる8文字",
+  fb:"al は <b>l が1つ</b>だけ（all ではない！）。後ろは <b>though</b>（t-h-o-u-g-h）。gh は発音しないので落としやすい。"},
+ {w:"attract",type:"スペル",q:"This event will ___ many visitors.",ja:"このイベントは多くの来場者を引きつけるだろう。",ans:"attract",hint:"a で始まる7文字",
+  fb:"<b>at</b>-<b>tract</b>。t が2つ続く（att）。tract＝「引っぱる」という意味のパーツで、tractor（トラクター＝引っぱる車）と同じ仲間。"},
+ // --- 意味 ---
+ {w:"allow",type:"意味",q:"allow",opts:["～を可能にする・許す","～を承認する","～を手配する","～に出席する"],ans:0,
+  fb:"allow＝「許す」が基本。英作文では <b>物 ＋ allow ＋ 人 ＋ to 〜</b>＝「物のおかげで人が〜できる」の形で使うと便利。ほかの選択肢：approve（承認する）、arrange（手配する）、attend（出席する）。",ex:"The Internet allows us to learn anytime."},
+ {w:"available",type:"意味",q:"available",opts:["利用できる・手に入る","毎年の","人工の","自動の"],ans:0,
+  fb:"available＝「（今すぐ）使える・手に入る・（人が）手が空いている」。ほかの選択肢：annual（毎年の）、artificial（人工の）、automatic（自動の）。どれも a で始まる形容詞なので注意。",ex:"Many books are available online."},
+ {w:"aware",type:"意味",q:"aware",opts:["気づいている・知っている","恥じている","いらいらしている","落ち着いている"],ans:0,
+  fb:"aware＝「気づいている・意識している」。ほかの選択肢：ashamed（恥じている）、annoyed（いらいらしている）、calm（落ち着いている）。",ex:"People should be aware of the dangers of plastic."},
+ {w:"although",type:"意味",q:"although",opts:["～だけれども","～なので","～しない限り","もし～なら"],ans:0,
+  fb:"although＝「〜だけれども」。前と後ろが<b>反対の内容</b>になる。because（〜なので）、unless（〜しない限り）、if（もし〜なら）と区別しよう。",ex:"Although it is expensive, it is very useful."},
+ {w:"attract",type:"意味",q:"attract",opts:["～を引きつける・集める","～を取り付ける","～を採用する","～を発表する"],ans:0,
+  fb:"attract＝「引きつける」。人や注目を集めるときに使う。ほかの選択肢：attach（取り付ける）、adopt（採用する）、announce（発表する）。attract と attach は形が似ているので要注意。",ex:"The festival attracts many tourists every year."},
+ // --- 語法・コロケーション ---
+ {w:"allow",type:"語法",q:"My parents allowed me ___ go to the concert.",opts:["to","for","that","going"],ans:0,
+  fb:"<b>allow ＋ 人 ＋ to ＋ 動詞の原形</b>（人が〜するのを許す）。✕ allow me going ／ ✕ allow me for ／ ✕ allow that S V はダメ。同じ形をとる仲間：want 人 to 〜、ask 人 to 〜、tell 人 to 〜。",ex:"My parents allowed me to go to the concert."},
+ {w:"available",type:"語法",q:"This book is available ___ Japanese.",opts:["in","on","at","of"],ans:0,
+  fb:"<b>available in ＋ 言語・色・サイズ</b>（〜で手に入る）。ほかにもよく使うセット：<b>available online</b>（ネットで手に入る）、<b>available to ＋ 人</b>（人が利用できる）、<b>available for ＋ 用途</b>。",ex:"This book is available in Japanese."},
+ {w:"aware",type:"語法",q:"We should be aware ___ the dangers of the Internet.",opts:["of","to","with","at"],ans:0,
+  fb:"<b>be aware of ＋ 名詞</b>（〜に気づいている）。後ろに文を続けたいときは <b>be aware that S V</b>。「〜に気づくようになる」は <b>become aware of</b>。似た形の ashamed of（恥じる）とセットで覚えると混乱しにくい。",ex:"We should be aware of the dangers of the Internet."},
+ {w:"although",type:"語法",q:"___ it was raining, we played soccer.",opts:["Although","Despite","In spite of","Because of"],ans:0,
+  fb:"後ろが <b>文（S ＋ V）</b>なら <b>Although</b>。後ろが <b>名詞</b>なら Despite / In spite of。<br>✅ Although it was raining, ...<br>✅ Despite the rain, ...<br>✕ Despite it was raining, ...<br>Because of は「〜のせいで」で意味が逆。",ex:"Although it was raining, we played soccer."},
+ {w:"attract",type:"語法",q:"The new design ___ a lot of attention.",opts:["attracted","paid","took","made"],ans:0,
+  fb:"<b>attract attention</b>＝注目を集める（周りの人が見てくる）。<b>pay attention to</b>＝注意を払う（自分が見る）。向きが逆なのでセットで覚えよう。ほかにも <b>attract tourists / visitors / customers</b>（観光客・来場者・客を集める）がよく出る。",ex:"The new design attracted a lot of attention."}
+];
+
+// ===== チャレンジモード用データ（準2級 意見論述） =====
+const CHALLENGES = [
+ {q:"Do you think students should use tablets at school?",ja:"生徒は学校でタブレットを使うべきだと思いますか？",kind:"意見論述（目安 50〜60語）",
+  plan:[
+   {part:"意見",idea:"「賛成」の立場で書いてみよう。",word:"",starter:"I think students should use tablets at school."},
+   {part:"理由①",idea:"タブレットがあれば、わからないことをすぐ調べられる。",word:"allow",starter:"First, tablets allow students to ..."},
+   {part:"理由②",idea:"勉強に役立つアプリがたくさん使える。",word:"available",starter:"Second, many useful apps are ..."},
+   {part:"ひと工夫",idea:"「使いすぎには注意が必要だけど…」と反対意見にもひと言ふれる。",word:"although / aware",starter:"Although students should be aware of ..., ..."},
+   {part:"まとめ",idea:"もう一度、自分の意見を言って終わる。",word:"",starter:"For these reasons, I think ..."}],
+  model:"I think students should use tablets at school. First, tablets allow students to find information quickly. Second, many useful learning apps are available online. Although students should be aware of the danger of using them too much, tablets can make studying more fun. For these reasons, I think tablets are good for students."},
+ {q:"Do you think more foreign tourists will visit Japan in the future?",ja:"今後、日本を訪れる外国人観光客は増えると思いますか？",kind:"意見論述（目安 50〜60語）",
+  plan:[
+   {part:"意見",idea:"「増える」と思う立場で書いてみよう。",word:"",starter:"I think more foreign tourists will visit Japan in the future."},
+   {part:"理由①",idea:"日本の食べ物や文化は、世界中の人を引きつけている。",word:"attract",starter:"First, Japanese food and culture attract ..."},
+   {part:"理由②",idea:"日本の情報がネットで簡単に手に入る。",word:"available",starter:"Second, a lot of information about Japan is ..."},
+   {part:"ひと工夫",idea:"「言葉が心配な人もいるけど、英語の案内が増えている」",word:"although",starter:"Although some tourists worry about ..., ..."},
+   {part:"まとめ",idea:"もう一度、自分の意見を言って終わる。",word:"",starter:"For these reasons, ..."}],
+  model:"I think more foreign tourists will visit Japan in the future. First, Japanese food and culture attract many people around the world. Second, a lot of information about Japan is available online, so it is easy to plan a trip. Although some tourists worry about language, there are more signs in English now. For these reasons, I think so."}
+];
 
 // ===== 状態 =====
-const STEP_NAMES=["① であう","② みわける","③ ならべる","④ かく","⑤ まとめ英作文","結果"];
-let S={step:0,i:0,res:{quiz:[],order:[],trans:[]},essay:null};
+const STEP_NAMES=["① であう","② みわける","③ ならべる","④ かく","結果"];
+let S;
+function resetStudy(){S={mode:"study",step:0,i:0,res:{quiz:[],order:[],trans:[]}}}
+function home(){S={mode:"home"};render();scrollTo(0,0)}
 
 function speak(t){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="en-US";u.rate=.9;
  const v=speechSynthesis.getVoices().find(v=>/en-US/.test(v.lang)&&/(Natural|Neural|Google)/.test(v.name));if(v)u.voice=v;speechSynthesis.speak(u);}catch(e){}}
 function shuffle(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
-function esc(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
 function hl(text){let t=esc(text);WORDS.forEach(o=>{t=t.replace(new RegExp("\\b("+o.w+"\\w*)\\b","gi"),"<mark>$1</mark>")});return t}
+function spk(t){return `<button class="spk" onclick="speak(this.dataset.t)" data-t="${esc(t)}">🔊</button>`}
 const $=s=>document.querySelector(s);
 
-function renderSteps(){$("#steps").innerHTML=STEP_NAMES.map((n,k)=>`<div class="step ${k===S.step?'on':k<S.step?'done':''}">${n}</div>`).join("")}
+function renderSteps(){const el=$("#steps");if(S.mode!=="study"){el.style.display="none";return}
+ el.style.display="flex";el.innerHTML=STEP_NAMES.map((n,k)=>`<div class="step ${k===S.step?'on':k<S.step?'done':''}">${n}</div>`).join("")}
 function go(step){S.step=step;S.i=0;render();scrollTo(0,0)}
 function next(){S.i++;if(S.i>=WORDS.length){go(S.step+1)}else{render();scrollTo(0,0)}}
 function prog(){return `<div class="progress">${S.i+1} / ${WORDS.length}</div>`}
 
-function render(){renderSteps();[stepMeet,stepQuiz,stepOrder,stepWrite,stepEssay,stepResult][S.step]()}
+function render(){renderSteps();
+ if(S.mode==="home")return viewHome();
+ if(S.mode==="test")return viewTest();
+ if(S.mode==="challenge")return viewChallenge();
+ [stepMeet,stepQuiz,stepOrder,stepWrite,stepResult][S.step]()}
 
 // ① であう
 function stepMeet(){const o=WORDS[S.i];
@@ -199,51 +270,141 @@ function stepWrite(){const o=WORDS[S.i],t=o.trans;
    <div class="row"><button class="btn primary" onclick="selfEval(2)">⭕ 書けた</button><button class="btn ghost" onclick="selfEval(1)">🔺 おしい</button><button class="btn ghost" onclick="selfEval(0)">❌ ダメ</button></div>`;};}
 function selfEval(n){S.res.trans[S.i]=n;next()}
 
-// ⑤ まとめ英作文
-function stepEssay(){
- $("#app").innerHTML=`<div class="card"><div class="small">今日の5語を使って、英検準2級の意見論述に挑戦！</div>
-  <div class="q"><b>${ESSAY.q}</b><br><span class="small">${ESSAY.ja}</span></div>
-  <div class="small">今日の単語：${WORDS.map(o=>`<b>${o.w}</b>`).join(" / ")}</div>
-  <details style="margin:8px 0"><summary class="small">型（テンプレート）を見る</summary><pre style="white-space:pre-wrap;font-size:13px;background:#f9fafb;padding:8px;border-radius:8px">${ESSAY.frame}</pre></details>
-  <textarea id="es" rows="8" placeholder="I think ..."></textarea>
-  <div class="small" id="live">0語 ／ 使った単語 0/5</div>
-  <button class="btn primary" id="chk">チェックする</button><div id="fb"></div></div>`;
- const ta=$("#es"),upd=()=>{const v=ta.value;const n=(v.match(/[A-Za-z']+/g)||[]).length;const used=WORDS.filter(o=>new RegExp("\\b"+o.w,"i").test(v)).length;$("#live").textContent=`${n}語 ／ 使った単語 ${used}/5`};
- ta.oninput=upd;
- $("#chk").onclick=()=>{const v=ta.value.trim();if(!v){alert("まず書いてみよう！");return}
-  const n=(v.match(/[A-Za-z']+/g)||[]).length;const used=WORDS.map(o=>({w:o.w,ok:new RegExp("\\b"+o.w,"i").test(v)}));
-  const reasons=/\b(first|firstly)\b/i.test(v)&&/\b(second|secondly|also)\b/i.test(v);
-  S.essay={n,used:used.filter(u=>u.ok).length,reasons,text:v};
-  $("#chk").remove();
-  $("#fb").innerHTML=`<div class="fb ${n>=50&&n<=60?'ok':'ng'}">
-   <div class="chk">${n>=50&&n<=60?'✅':'⚠️'} 語数：${n}語（目安 50〜60語）</div>
-   <div class="chk">${reasons?'✅':'⚠️'} 理由を2つ（First / Second）</div>
-   <div class="chk">今日の単語：${used.map(u=>(u.ok?'✅':'⬜')+u.w).join("　")}</div>
-   <div class="model"><b>あなたの英文</b><br>${hl(v)}</div>
-   <div class="model"><b>模範解答（5語すべて使用）</b><br>${hl(ESSAY.model)} <button class="spk" onclick="speak(\`${ESSAY.model}\`)">🔊</button></div></div>
-   <button class="btn ghost" onclick="copyPrompt()">📋 AI添削用プロンプトをコピー</button>
-   <button class="btn primary" onclick="go(5)">結果を見る</button>`;};}
-function copyPrompt(){const p=`あなたは英検準2級の英作文の先生です。次の意見論述（50〜60語）を、内容・構成・語彙・文法の4観点で各4点満点で採点し、まちがいを日本語でやさしく直してください。\nお題：${ESSAY.q}\n私の答え：\n${S.essay.text}`;
- navigator.clipboard.writeText(p).then(()=>alert("コピーしました！ChatGPTやGeminiに貼り付けてね"),()=>prompt("コピーしてね",p))}
-
-// 結果
+// 学習モードの結果
 function stepResult(){const q=S.res.quiz.filter(Boolean).length,o=S.res.order.filter(Boolean).length,t=S.res.trans.reduce((a,b)=>a+(b||0),0)/2,
-  e=S.essay?(S.essay.used/5)*5:0, total=q+o+t+e, pct=Math.round(total/20*100);
- const lv=pct>=90?'S':pct>=70?'A':'';
- $("#app").innerHTML=`<div class="card" style="text-align:center"><div class="small">今日のスコア</div>
+  pct=Math.round((q+o+t)/15*100), lv=pct>=90?'S':pct>=70?'A':'';
+ $("#app").innerHTML=`<div class="card" style="text-align:center"><div class="small">学習モードのスコア</div>
   <div class="score ${lv==='S'?'gold':''}">${pct}%</div>
   <div style="font-size:20px;font-weight:bold">${lv==='S'?'🏆 S級合格！':lv==='A'?'🎉 合格！':'あと少し！もう一回やってみよう'}</div>
   <div class="small">合格ライン 70% ／ S級 90%</div></div>
   <div class="card"><table><tr><th>単語</th><th>みわける</th><th>ならべる</th><th>かく</th></tr>
   ${WORDS.map((w,k)=>`<tr><td><b>${w.w}</b></td><td>${S.res.quiz[k]?'⭕':'❌'}</td><td>${S.res.order[k]?'⭕':'❌'}</td><td>${['❌','🔺','⭕'][S.res.trans[k]??0]}</td></tr>`).join("")}
-  </table><div class="small" style="margin-top:8px">まとめ英作文：今日の単語を ${S.essay?S.essay.used:0}/5 語 使えた</div></div>
-  <div class="card lock">🔒 <b>製品版では…</b><br><span class="small">中1〜準1級まで約3,800語を10語ずつ／苦手な単語が次回また出る復習機能／英作文のお題がたくさん</span></div>
-  <button class="btn primary" onclick="S={step:0,i:0,res:{quiz:[],order:[],trans:[]},essay:null};render()">もう一度やる</button>`;
+  </table></div>
+  <div class="card" style="background:#eff6ff"><b>次はどうする？</b><div class="small">覚えたか確かめるなら「テストモード」がおすすめ！</div>
+  <button class="btn primary" onclick="startTest()">📝 テストモードへ</button>
+  <button class="btn ghost" onclick="S={mode:'challenge',c:null};render()">✍️ チャレンジモード（英作文）</button></div>
+  <button class="btn ghost" onclick="resetStudy();render()">もう一度学習する</button>
+  <button class="btn ghost" onclick="home()">ホームへ</button>`;
  if(lv)confetti(lv==='S');}
+
+// ===== ホーム =====
+function viewHome(){
+ $("#app").innerHTML=`<div class="card"><div class="small">今日の単語（英検準2級）</div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${WORDS.map(o=>`<span class="tile">${o.w}</span>`).join("")}</div></div>
+  <button class="mode" onclick="resetStudy();render()"><span class="mi">📘</span><span><b>学習モード</b><br><span class="small">であう → みわける → ならべる → かく（短い英訳）</span></span></button>
+  <button class="mode" onclick="startTest()"><span class="mi">📝</span><span><b>テストモード</b><br><span class="small">意味・スペル・語法／コロケーション 全15問。終わったらていねいに解説</span></span></button>
+  <button class="mode" onclick="S={mode:'challenge',c:null};render()"><span class="mi">✍️</span><span><b>チャレンジモード</b><br><span class="small">英検準2級の英作文に挑戦。書く内容と使う単語をヒントで提案</span></span></button>
+  <div class="card lock">🔒 <b>製品版では…</b><br><span class="small">中1〜準1級まで約3,800語を10語ずつ／苦手な単語が次回また出る復習機能／英作文のお題がたくさん</span></div>`;}
+
+// ===== テストモード =====
+const PARTS=["スペル","意味","語法"];
+const PART_LABEL={"スペル":"Part 1　スペル（書けるかな？）","意味":"Part 2　意味（わかるかな？）","語法":"Part 3　語法・コロケーション（使えるかな？）"};
+function startTest(list){const src=list||TEST;
+ const qs=PARTS.flatMap(p=>shuffle(src.filter(x=>x.type===p))).map(x=>{const c={...x};if(c.opts){c.order=shuffle(c.opts.map((_,i)=>i))}return c});
+ S={mode:"test",phase:"run",qs,k:0,ans:[]};render();scrollTo(0,0)}
+function lev(a,b){const d=[...Array(a.length+1)].map((_,i)=>[i,...Array(b.length).fill(0)]);for(let j=1;j<=b.length;j++)d[0][j]=j;
+ for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[a.length][b.length]}
+function judge(q,a){if(q.type==="スペル"){const v=(a||"").trim().toLowerCase();return v===q.ans}return a===q.ans}
+function testAnswer(a){S.ans[S.k]=a;S.k++;if(S.k>=S.qs.length)S.phase="result";render();scrollTo(0,0)}
+
+function viewTest(){if(S.phase==="result")return testResult();
+ const q=S.qs[S.k],n=S.qs.length,newPart=S.k===0||S.qs[S.k-1].type!==q.type;
+ let body="";
+ if(q.type==="スペル"){
+  body=`<div class="small">日本語の意味に合う単語を<b>キーボードで</b>書こう</div>
+   <div class="q">${esc(q.q).replace("___",'<span class="blank">？</span>')}</div><div class="small">${q.ja}</div>
+   <div class="small" style="margin:6px 0">ヒント：${q.hint}</div>
+   <input id="sp" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%;font-size:20px;padding:10px;border:2px solid #cbd5e1;border-radius:10px">
+   <button class="btn primary" id="go">答える</button>`;
+ }else{
+  body=`<div class="small">${q.type==="意味"?"この単語の意味は？":"空所に入るものを選ぼう"}</div>
+   <div class="q">${q.type==="意味"?`<span style="font-size:30px;font-weight:bold;color:#1e3a8a">${q.q}</span> ${spk(q.q)}`:esc(q.q).replace("___",'<span class="blank">？</span>')}</div>
+   ${q.order.map(i=>`<button class="choice" onclick="testAnswer(${i})">${esc(q.opts[i])}</button>`).join("")}`;
+ }
+ $("#app").innerHTML=`<div class="progress">📝 テスト ${S.k+1} / ${n}</div>
+  <div style="height:6px;background:#e5e7eb;border-radius:3px;margin-bottom:10px"><div style="height:6px;width:${S.k/n*100}%;background:#2563eb;border-radius:3px"></div></div>
+  ${newPart?`<div class="part">${PART_LABEL[q.type]}</div>`:""}
+  <div class="card">${body}</div><div class="small" style="text-align:center">答え合わせはテストの最後にまとめて行います</div>`;
+ if(q.type==="スペル"){const i=$("#sp");i.focus();const f=()=>{if(!i.value.trim()){alert("書いてみよう！わからなければ思いつく形でOK");return}testAnswer(i.value)};
+  $("#go").onclick=f;i.onkeydown=e=>{if(e.key==="Enter")f()}}}
+
+function testResult(){const qs=S.qs,ok=qs.map((q,k)=>judge(q,S.ans[k])),score=ok.filter(Boolean).length,n=qs.length,pct=Math.round(score/n*100),
+  lv=pct>=90?'S':pct>=70?'A':'';
+ // タイプ別・単語別
+ const byType=PARTS.map(p=>{const idx=qs.map((q,k)=>q.type===p?k:-1).filter(k=>k>=0);return{p,ok:idx.filter(k=>ok[k]).length,all:idx.length}}).filter(x=>x.all);
+ const words=[...new Set(qs.map(q=>q.w))];
+ const cell=(w,p)=>{const k=qs.findIndex(q=>q.w===w&&q.type===p);return k<0?'－':ok[k]?'⭕':'❌'};
+ const weakWords=words.filter(w=>qs.some((q,k)=>q.w===w&&!ok[k]));
+ const weakType=byType.filter(x=>x.ok<x.all).sort((a,b)=>a.ok/a.all-b.ok/b.all)[0];
+ const ADVICE={"スペル":"スペルを落としやすいようです。声に出して読みながら、ノートに3回ずつ書くと手が覚えます。",
+  "意味":"意味がまだあいまいな単語があります。学習モードの「であう」で例文ごと読み直すと、イメージで覚えられます。",
+  "語法":"語法・コロケーションで迷っています。単語だけでなく「allow 人 to 〜」「aware of」のように<b>前後のセットごと</b>覚えるのがコツです。"};
+ const msg=score===n?"全問正解！意味・スペル・使い方まで完璧です。この5語は英作文でも自信を持って使えます。":
+  `${score}問正解です。${weakType?ADVICE[weakType.p]:""} 下の解説で、まちがえた問題を1問ずつ確認しよう。`;
+ const card=(q,k)=>{const a=S.ans[k],good=ok[k];
+  let mine,right;
+  if(q.type==="スペル"){const v=(a||"").trim();mine=esc(v||"（空欄）");right=q.ans;
+   const d=lev(v.toLowerCase(),q.ans);if(!good&&d<=2)mine+=` <span class="near">おしい！あと${d}文字</span>`;}
+  else{mine=esc(q.opts[a]);right=q.opts[q.ans]}
+  let at=q.type==="スペル"?q.ans:q.opts[q.ans];if(q.q.startsWith("___"))at=at[0].toUpperCase()+at.slice(1);
+  const full=q.type==="意味"?q.ex:q.q.replace("___",at);
+  const fullJa=q.ja?`<div class="small">${q.ja}</div>`:"";
+  return `<div class="fbcard ${good?'ok':'ng'}"><div class="small">${q.type}｜<b>${q.w}</b></div>
+   <div class="q" style="margin:4px 0">${q.type==="意味"?`<b>${q.q}</b> の意味`:esc(q.q).replace("___",'<span class="blank">'+(good?esc(at):'？')+'</span>')}</div>
+   ${good?`<div>⭕ 正解：<b>${esc(right)}</b></div>`:`<div>あなたの答え：<s>${mine}</s></div><div>正解：<b style="color:#047857">${esc(right)}</b></div>`}
+   <div class="expl">📖 ${q.fb}</div>
+   ${full?`<div class="ex"><div class="en">${hl(full)} ${spk(full)}</div>${fullJa}</div>`:""}</div>`};
+ const wrong=qs.map((q,k)=>k).filter(k=>!ok[k]),right=qs.map((q,k)=>k).filter(k=>ok[k]);
+ $("#app").innerHTML=`<div class="card" style="text-align:center"><div class="small">テスト結果</div>
+  <div class="score ${lv==='S'?'gold':''}">${score} / ${n}</div>
+  <div style="font-size:20px;font-weight:bold">${lv==='S'?'🏆 S級合格！':lv==='A'?'🎉 合格！':'もう少し！解説を読んで再チャレンジ'}</div>
+  <div class="small">合格ライン 70% ／ S級 90%（正答率 ${pct}%）</div></div>
+  <div class="card"><b>👩‍🏫 先生からのひとこと</b><div style="margin-top:6px;line-height:1.7">${msg}</div>
+  <div style="display:flex;gap:6px;margin-top:10px">${byType.map(x=>`<div class="typebox"><div class="small">${x.p}</div><b>${x.ok}/${x.all}</b></div>`).join("")}</div></div>
+  <div class="card"><b>単語ごとの結果</b><table style="margin-top:6px"><tr><th>単語</th><th>スペル</th><th>意味</th><th>語法</th></tr>
+  ${words.map(w=>`<tr><td><b>${w}</b> ${spk(w)}</td><td>${cell(w,"スペル")}</td><td>${cell(w,"意味")}</td><td>${cell(w,"語法")}</td></tr>`).join("")}</table>
+  ${weakWords.length?`<div class="small" style="margin-top:6px">🔁 要復習：${weakWords.map(w=>`<b>${w}</b>`).join("、")}</div>`:""}</div>
+  ${wrong.length?`<h3 style="margin:16px 4px 8px">❌ まちがえた問題の解説（${wrong.length}問）</h3>${wrong.map(k=>card(qs[k],k)).join("")}`:""}
+  ${right.length?`<details class="card"><summary><b>⭕ 正解した問題も確認する（${right.length}問）</b></summary>${right.map(k=>card(qs[k],k)).join("")}</details>`:""}
+  ${wrong.length?`<button class="btn primary" onclick="startTest(S.qs.filter((q,k)=>!${JSON.stringify(ok)}[k]).map(({order,...q})=>q))">🔁 まちがえた問題だけもう一度</button>`:""}
+  <button class="btn ghost" onclick="startTest()">テストをはじめからやり直す</button>
+  <button class="btn ghost" onclick="S={mode:'challenge',c:null};render()">✍️ チャレンジモード（英作文）へ</button>
+  <button class="btn ghost" onclick="home()">ホームへ</button>`;
+ if(lv)confetti(lv==='S');}
+
+// ===== チャレンジモード =====
+function viewChallenge(){
+ if(S.c===null){
+  $("#app").innerHTML=`<div class="card"><b>✍️ チャレンジモード</b><div class="small" style="margin-top:4px;line-height:1.6">英検準2級の英作文に挑戦！点数はつけません。<b>今日の単語を使って書いてみること</b>が目的です。書く内容と、どこでどの単語を使うかはヒントで提案します。</div></div>
+   ${CHALLENGES.map((c,k)=>`<button class="mode" onclick="S.c=${k};render();scrollTo(0,0)"><span class="mi">📝</span><span><b>お題${k+1}</b><br>${esc(c.q)}<br><span class="small">${c.ja}</span></span></button>`).join("")}
+   <button class="btn ghost" onclick="home()">ホームへ</button>`;return}
+ const c=CHALLENGES[S.c];
+ $("#app").innerHTML=`<div class="card"><div class="small">${c.kind}</div>
+  <div class="q"><b>${esc(c.q)}</b> ${spk(c.q)}<br><span class="small">${c.ja}</span></div></div>
+  <div class="card"><b>💡 こんな内容で書いてみたら？</b>
+  ${c.plan.map(p=>`<div class="plan"><div><span class="pos">${p.part}</span>${p.idea}</div>
+   ${p.word?`<div class="small" style="margin-top:4px">👉 ここで <mark>${p.word}</mark> を使ってみよう</div>`:""}
+   <details><summary class="small">書き出しを見る</summary><div class="starter">${hl(p.starter)}</div></details></div>`).join("")}</div>
+  <div class="card"><textarea id="es" rows="8" placeholder="I think ..."></textarea>
+  <div class="small" id="live">0語 ／ 今日の単語 0/5</div>
+  <div id="usedw" style="margin-top:6px"></div>
+  <button class="btn primary" onclick="copyPrompt()">📋 AI添削用プロンプトをコピー</button>
+  <button class="btn ghost" onclick="const m=$('#model');m.style.display=m.style.display==='none'?'block':'none'">模範解答を見る／とじる</button>
+  <div class="model" id="model" style="display:none"><b>模範解答</b><br>${hl(c.model)} ${spk(c.model)}</div></div>
+  <button class="btn ghost" onclick="S.c=null;render();scrollTo(0,0)">ほかのお題にする</button>
+  <button class="btn ghost" onclick="home()">ホームへ</button>`;
+ const ta=$("#es"),upd=()=>{const v=ta.value,n=(v.match(/[A-Za-z']+/g)||[]).length,used=WORDS.map(o=>({w:o.w,ok:new RegExp("\\b"+o.w,"i").test(v)}));
+  $("#live").textContent=`${n}語 ／ 今日の単語 ${used.filter(u=>u.ok).length}/5`;
+  $("#usedw").innerHTML=used.map(u=>`<span class="chip ${u.ok?'on':''}">${u.ok?'✅':'⬜'} ${u.w}</span>`).join("")};
+ ta.oninput=upd;upd();}
+function copyPrompt(){const c=CHALLENGES[S.c],v=$("#es").value.trim();if(!v){alert("まず書いてみよう！");return}
+ const p=`あなたは英検準2級の英作文の先生です。次の意見論述（目安50〜60語）を、内容・構成・語彙・文法の4観点で各4点満点で採点し、まちがいを日本語でやさしく直してください。\n特に、次の単語を正しく使えているかもチェックしてください：${WORDS.map(o=>o.w).join(", ")}\nお題：${c.q}\n私の答え：\n${v}`;
+ navigator.clipboard.writeText(p).then(()=>alert("コピーしました！ChatGPTやGeminiに貼り付けてね"),()=>prompt("コピーしてね",p))}
+
 function confetti(gold){const cs=gold?['#f59e0b','#fcd34d','#fde68a','#d97706']:['#2563eb','#7c3aed','#10b981','#f59e0b','#ef4444'];
  for(let k=0;k<80;k++){const d=document.createElement('div');d.className='confetti';d.style.left=Math.random()*100+'vw';d.style.background=cs[k%cs.length];d.style.animationDuration=(2+Math.random()*2)+'s';d.style.animationDelay=Math.random()*.8+'s';document.body.appendChild(d);setTimeout(()=>d.remove(),5000)}}
 
-render();
+home();
 </script>
 </body>
 </html>
