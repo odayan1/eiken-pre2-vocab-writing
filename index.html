@@ -67,6 +67,16 @@
   .chip.on{background:#d1fae5}
   .redo{background:#fef3c7;color:#92400e;border-radius:6px;padding:2px 8px;font-weight:bold}
   header{cursor:pointer}
+  .btn.dim{opacity:.35}
+  .btn.pick-ok{background:#10b981!important;color:#fff!important;animation:pop .45s}
+  .btn.pick-mid{background:#ef4444!important;color:#fff!important;animation:pop .45s,glow .55s 2}
+  .btn.pick-ng{background:#991b1b!important;color:#fff!important;animation:pop .45s,glow .55s 2}
+  @keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.12)}100%{transform:scale(1)}}
+  @keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0)}50%{box-shadow:0 0 0 8px rgba(239,68,68,.35)}}
+  .stamp{margin-top:10px;padding:12px;border-radius:10px;text-align:center;font-weight:bold;font-size:17px;animation:pop .45s}
+  .stamp.pick-ok{background:#d1fae5;color:#065f46}
+  .stamp.pick-mid{background:#fee2e2;color:#dc2626}
+  .stamp.pick-ng{background:#fecaca;color:#7f1d1d}
   .topbar{display:flex;justify-content:flex-end;margin-bottom:8px}
   .homebtn{border:none;background:#fff;border-radius:18px;padding:6px 14px;font-size:14px;box-shadow:0 1px 4px rgba(0,0,0,.1);cursor:pointer}
   .relbox{background:#f5f3ff;border-radius:10px;padding:10px 12px;margin-top:10px}
@@ -337,8 +347,16 @@ function stepWrite(){const o=WORDS[wi()],t=o.trans;
    <div class="chk">${endOk?'✅':'⚠️'} 最後にピリオド</div>
    <div class="model"><b>模範解答</b>${t.model.map(m=>`<div>・${hl(m)} ${spk(m)}</div>`).join("")}</div>${relBox(o,true)}
    <div class="small" style="margin-top:6px">模範解答とくらべて、自分の答えは？<br>（🔺おしい・❌ダメ を選んだ単語は、このセクションの最後にもう一度出せます）</div></div>
-   <div class="row"><button class="btn primary" onclick="selfEval(2)">⭕ 書けた</button><button class="btn ghost" onclick="selfEval(1)">🔺 おしい</button><button class="btn ghost" onclick="selfEval(0)">❌ ダメ</button></div>`;};}
-function selfEval(n){record("trans",n,S.tmpWrite);next()}
+   <div class="row" id="selfrow"><button class="btn primary" onclick="selfEval(2,this)">⭕ 書けた</button><button class="btn ghost" onclick="selfEval(1,this)">🔺 おしい</button><button class="btn ghost" onclick="selfEval(0,this)">❌ ダメ</button></div><div id="stamp"></div>`;};}
+const SELF_FB=[{cls:"pick-ng",msg:"❌ ダメ を記録しました",sub:"この単語は、セクションの最後にもう一度出せます"},
+ {cls:"pick-mid",msg:"🔺 おしい を記録しました",sub:"この単語は、セクションの最後にもう一度出せます"},
+ {cls:"pick-ok",msg:"⭕ 書けた を記録しました",sub:"いいね！その調子"}];
+function selfEval(n,btn){if(S.selfLock)return;S.selfLock=true;record("trans",n,S.tmpWrite);
+ document.querySelectorAll("#selfrow .btn").forEach(b=>{b.disabled=true;if(b!==btn)b.classList.add("dim")});
+ const f=SELF_FB[n];if(btn)btn.classList.add(f.cls);
+ $("#stamp").innerHTML=`<div class="stamp ${f.cls}">${f.msg}<div class="small" style="color:inherit;opacity:.85">${f.sub}</div></div>`;
+ try{navigator.vibrate&&navigator.vibrate(n===2?40:[60,40,60])}catch(e){}
+ const st=S;setTimeout(()=>{st.selfLock=false;if(S===st&&S.step===3&&!S.review)next()},1100)}
 
 // セクションごとのふりかえり
 const SEC_TITLE=["","② みわける","③ ならべる","④ かく"];
