@@ -239,7 +239,7 @@ function home(){S={mode:"home"};render();scrollTo(0,0)}
 function goHome(){if(S.mode==="home"||S.mode==="select"||confirm("ホームに戻りますか？（いまの進み具合は消えます）"))home()}
 function relBox(o,compact){if(!o.rel)return"";
  if(compact)return `<div class="relmini">🔗 ${o.rel.map(r=>`<span class="rtag">${r.tag}</span><b>${r.w}</b>`).join("　")}</div>`;
- return `<div class="relbox"><b>🔗 似た言葉・反対の言葉</b>${o.rel.map(r=>`<div class="relrow"><span class="rtag">${r.tag}</span><b>${r.w}</b> ${spk(r.w.split(" / ")[0])}<div class="small">${r.note}</div>${r.ex?`<div class="small">例：${hl(r.ex)}</div>`:""}</div>`).join("")}<div class="small" style="margin-top:6px">📌 ${o.relWhy}</div></div>`}
+ return `<div class="relbox"><b>🔗 似た言葉・反対の言葉</b>${o.rel.map(r=>`<div class="relrow"><span class="rtag">${r.tag}</span>${r.w.split(" / ").map(x=>`<b>${x}</b> ${spk(x)}`).join('<span class="small"> ／ </span>')}<div class="small">${r.note}</div>${r.ex?`<div class="small">例：${hl(r.ex)}</div>`:""}</div>`).join("")}<div class="small" style="margin-top:6px">📌 ${o.relWhy}</div></div>`}
 function viewSelect(){
  $("#app").innerHTML=`<div class="card"><b>📘 学習する単語をえらぼう</b><div class="small" style="margin-top:4px">チェックした単語だけで学習します</div>
   ${WORDS.map((o,k)=>`<label class="selrow"><input type="checkbox" class="selw" value="${k}" checked> <b>${o.w}</b> <span class="small">${o.mean}</span></label>`).join("")}
