@@ -65,6 +65,7 @@
   .starter{background:#f9fafb;border-radius:8px;padding:8px;margin-top:4px;font-size:15px}
   .chip{display:inline-block;font-size:13px;background:#f3f4f6;border-radius:12px;padding:3px 9px;margin:2px}
   .chip.on{background:#d1fae5}
+  .redo{background:#fef3c7;color:#92400e;border-radius:6px;padding:2px 8px;font-weight:bold}
   header{cursor:pointer}
 </style>
 </head>
@@ -191,7 +192,7 @@ const CHALLENGES = [
 // ===== 状態 =====
 const STEP_NAMES=["① であう","② みわける","③ ならべる","④ かく","結果"];
 let S;
-function resetStudy(){S={mode:"study",step:0,i:0,res:{quiz:[],order:[],trans:[]}}}
+function resetStudy(){S={mode:"study",step:0,i:0,list:ALL,review:false,round:1,res:{quiz:[],order:[],trans:[]},cur:{quiz:[],order:[],trans:[]},mine:{quiz:[],order:[],trans:[]}}}
 function home(){S={mode:"home"};render();scrollTo(0,0)}
 
 function speak(t){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="en-US";u.rate=.9;
@@ -204,73 +205,114 @@ const $=s=>document.querySelector(s);
 
 function renderSteps(){const el=$("#steps");if(S.mode!=="study"){el.style.display="none";return}
  el.style.display="flex";el.innerHTML=STEP_NAMES.map((n,k)=>`<div class="step ${k===S.step?'on':k<S.step?'done':''}">${n}</div>`).join("")}
-function go(step){S.step=step;S.i=0;render();scrollTo(0,0)}
-function next(){S.i++;if(S.i>=WORDS.length){go(S.step+1)}else{render();scrollTo(0,0)}}
-function prog(){return `<div class="progress">${S.i+1} / ${WORDS.length}</div>`}
+const ALL=WORDS.map((_,k)=>k);
+const SEC=["","quiz","order","trans"];
+function go(step){Object.assign(S,{step,i:0,list:ALL,review:false,round:1});render();scrollTo(0,0)}
+function next(){S.i++;if(S.i>=S.list.length){if(S.step===0)go(1);else{S.review=true;render();scrollTo(0,0)}}else{render();scrollTo(0,0)}}
+function wi(){return S.list[S.i]}
+function prog(){return `<div class="progress">${S.round>1?'<span class="redo">🔁 やり直し（まちがえた単語だけ）</span> ':''}${S.i+1} / ${S.list.length}</div>`}
+function record(sec,val,mine){const w=wi();if(S.res[sec][w]===undefined)S.res[sec][w]=val;S.cur[sec][w]=val;S.mine[sec][w]=mine}
+function isOk(sec,w){return sec==="trans"?S.cur.trans[w]===2:S.cur[sec][w]===true}
 
 function render(){renderSteps();
  if(S.mode==="home")return viewHome();
  if(S.mode==="test")return viewTest();
  if(S.mode==="challenge")return viewChallenge();
+ if(S.review)return sectionReview();
  [stepMeet,stepQuiz,stepOrder,stepWrite,stepResult][S.step]()}
 
 // ① であう
-function stepMeet(){const o=WORDS[S.i];
+function stepMeet(){const o=WORDS[wi()];
  $("#app").innerHTML=`${prog()}<div class="card">
-  <div class="word">${o.w}<button class="spk" onclick="speak('${o.w}')">🔊</button></div>
+  <div class="word">${o.w}${spk(o.w)}</div>
   <div class="mean"><span class="pos">${o.pos}</span>${o.mean}</div>
   <div class="pattern">✍️ 英作文の型：${o.pattern}</div>
-  ${o.ex.map(e=>`<div class="ex"><div class="en">${hl(e.en)} <button class="spk" onclick="speak(\`${e.en}\`)">🔊</button></div><div class="ja">${e.ja}</div></div>`).join("")}
+  ${o.ex.map(e=>`<div class="ex"><div class="en">${hl(e.en)} ${spk(e.en)}</div><div class="ja">${e.ja}</div></div>`).join("")}
   <div class="tip">💡 ${o.tip}</div></div>
-  <button class="btn primary" onclick="next()">${S.i<WORDS.length-1?'次の単語へ':'② みわける へ進む'}</button>`;}
+  <button class="btn primary" onclick="next()">${S.i<S.list.length-1?'次の単語へ':'② みわける へ進む'}</button>`;}
 
 // ② みわける
-function stepQuiz(){const o=WORDS[S.i],z=o.quiz;
+function stepQuiz(){const o=WORDS[wi()],z=o.quiz;
  const opts=shuffle([{w:z.ans,ok:true},...z.dis.map(d=>({w:d[0],why:d[1]}))]);
  $("#app").innerHTML=`${prog()}<div class="card"><div class="small">空所に入る単語を選ぼう</div>
   <div class="q">${esc(z.q).replace("___",'<span class="blank">？</span>')}</div>
   <div id="opts">${opts.map((p,k)=>`<button class="choice" data-k="${k}">${p.w}</button>`).join("")}</div><div id="fb"></div></div>`;
  document.querySelectorAll(".choice").forEach(b=>b.onclick=()=>{
   const p=opts[b.dataset.k];document.querySelectorAll(".choice").forEach(x=>{x.disabled=true;if(opts[x.dataset.k].ok)x.classList.add("ok")});
-  if(!p.ok)b.classList.add("ng");S.res.quiz[S.i]=!!p.ok;
+  if(!p.ok)b.classList.add("ng");record("quiz",!!p.ok,p.w);
   const full=z.q.replace("___",z.ans);
-  $("#fb").innerHTML=`<div class="fb ${p.ok?'ok':'ng'}"><b>${p.ok?'⭕ 正解！':'❌ 正解は '+z.ans}</b><br>${hl(full)} <button class="spk" onclick="speak(\`${full}\`)">🔊</button><br><span class="small">${z.ja}</span><hr style="border:none;border-top:1px solid #e5e7eb">
+  $("#fb").innerHTML=`<div class="fb ${p.ok?'ok':'ng'}"><b>${p.ok?'⭕ 正解！':'❌ 正解は '+z.ans}</b><br>${hl(full)} ${spk(full)}<br><span class="small">${z.ja}</span><hr style="border:none;border-top:1px solid #e5e7eb">
    <b>他の3語がダメな理由</b><br>${z.dis.map(d=>`・<b>${d[0]}</b>＝${d[1]}`).join("<br>")}</div>
    <button class="btn primary" onclick="next()">次へ</button>`;});}
 
 // ③ ならべる（並べ替え）
-function stepOrder(){const o=WORDS[S.i],tokens=o.order.en.split(" ");let pool=shuffle(tokens.map((t,k)=>({t,k}))),ans=[];
+function stepOrder(){const o=WORDS[wi()],tokens=o.order.en.split(" ");let pool=shuffle(tokens.map((t,k)=>({t,k}))),ans=[],done=false;
  const draw=()=>{$("#app").innerHTML=`${prog()}<div class="card"><div class="small">日本語に合うように、タップして英文を組み立てよう</div>
   <div class="q">${o.order.ja}</div>
-  <div class="tiles answer">${ans.map((p,k)=>`<span class="tile" data-a="${k}">${p.t}</span>`).join("")}</div>
-  <div class="tiles">${pool.map((p,k)=>`<span class="tile" data-p="${k}">${p.t}</span>`).join("")}</div>
-  <div id="fb"></div></div>${pool.length===0&&!$("#done")?'<button class="btn primary" id="chk">答え合わせ</button>':''}`;
+  <div class="tiles answer">${ans.map((p,k)=>`<span class="tile" data-a="${k}">${esc(p.t)}</span>`).join("")}</div>
+  <div class="tiles">${pool.map((p,k)=>`<span class="tile" data-p="${k}">${esc(p.t)}</span>`).join("")}</div>
+  <div id="fb"></div></div>${pool.length===0?'<button class="btn primary" id="chk">答え合わせ</button>':''}`;
   document.querySelectorAll("[data-p]").forEach(e=>e.onclick=()=>{ans.push(pool.splice(e.dataset.p,1)[0]);draw()});
   document.querySelectorAll("[data-a]").forEach(e=>e.onclick=()=>{pool.push(ans.splice(e.dataset.a,1)[0]);draw()});
-  const c=$("#chk");if(c)c.onclick=()=>{const mine=ans.map(p=>p.t).join(" ");const ok=mine===o.order.en;S.res.order[S.i]=ok;const sent=o.order.en.replace(/ ([.,])/g,"$1");
-   c.remove();$("#fb").innerHTML=`<div class="fb ${ok?'ok':'ng'}" id="done"><b>${ok?'⭕ 正解！':'❌ 惜しい！'}</b><br>正解：${hl(sent)} <button class="spk" onclick="speak(\`${sent}\`)">🔊</button><br><span class="small">型：${o.pattern}</span></div>
+  const c=$("#chk");if(c)c.onclick=()=>{const mine=ans.map(p=>p.t).join(" ");const ok=mine===o.order.en;record("order",ok,mine.replace(/ ([.,])/g,"$1"));const sent=o.order.en.replace(/ ([.,])/g,"$1");
+   c.remove();$("#fb").innerHTML=`<div class="fb ${ok?'ok':'ng'}"><b>${ok?'⭕ 正解！':'❌ 惜しい！'}</b><br>正解：${hl(sent)} ${spk(sent)}<br><span class="small">型：${o.pattern}</span></div>
    <button class="btn primary" onclick="next()">次へ</button>`;document.querySelectorAll(".tile").forEach(t=>t.onclick=null)};};
  draw();}
 
 // ④ かく（和文英訳）
-function stepWrite(){const o=WORDS[S.i],t=o.trans;
+function stepWrite(){const o=WORDS[wi()],t=o.trans;
  $("#app").innerHTML=`${prog()}<div class="card"><div class="small">英語に直そう（<b>${o.w}</b> を使うこと）</div>
   <div class="q">${t.ja}</div><div class="small">ヒント：${o.pattern}</div>
   <textarea id="ta" rows="3" placeholder="ここに英文を書く"></textarea>
   <button class="btn primary" id="chk">チェックする</button><div id="fb"></div></div>`;
  $("#chk").onclick=()=>{const v=$("#ta").value.trim();if(!v){alert("まず英文を書いてみよう！");return}
+  S.tmpWrite=v;
   const useOk=t.need.every(r=>r.test(v)),endOk=/[.!?]$/.test(v),capOk=/^[A-Z]/.test(v);
-  $("#chk").remove();
+  $("#chk").remove();$("#ta").readOnly=true;
   $("#fb").innerHTML=`<div class="fb ${useOk?'ok':'ng'}">
    <div class="chk">${useOk?'✅':'⚠️'} ${t.needLabel}</div>
    <div class="chk">${capOk?'✅':'⚠️'} 文の最初は大文字</div>
    <div class="chk">${endOk?'✅':'⚠️'} 最後にピリオド</div>
-   <div class="model"><b>模範解答</b>${t.model.map(m=>`<div>・${hl(m)} <button class="spk" onclick="speak(\`${m}\`)">🔊</button></div>`).join("")}</div>
-   <div class="small" style="margin-top:6px">模範解答とくらべて、自分の答えは？</div></div>
+   <div class="model"><b>模範解答</b>${t.model.map(m=>`<div>・${hl(m)} ${spk(m)}</div>`).join("")}</div>
+   <div class="small" style="margin-top:6px">模範解答とくらべて、自分の答えは？<br>（🔺おしい・❌ダメ を選んだ単語は、このセクションの最後にもう一度出せます）</div></div>
    <div class="row"><button class="btn primary" onclick="selfEval(2)">⭕ 書けた</button><button class="btn ghost" onclick="selfEval(1)">🔺 おしい</button><button class="btn ghost" onclick="selfEval(0)">❌ ダメ</button></div>`;};}
-function selfEval(n){S.res.trans[S.i]=n;next()}
+function selfEval(n){record("trans",n,S.tmpWrite);next()}
+
+// セクションごとのふりかえり
+const SEC_TITLE=["","② みわける","③ ならべる","④ かく"];
+function sectionReview(){const sec=SEC[S.step],items=S.list,wrong=items.filter(w=>!isOk(sec,w)),good=items.filter(w=>isOk(sec,w)),n=items.length;
+ const card=(w)=>{const o=WORDS[w],ok=isOk(sec,w),mine=S.mine[sec][w];let body="";
+  if(sec==="quiz"){const z=o.quiz,full=z.q.replace("___",z.ans),d=z.dis.find(x=>x[0]===mine);
+   body=`<div class="q" style="margin:4px 0">${esc(z.q).replace("___",'<span class="blank">'+(ok?z.ans:'？')+'</span>')}</div>
+    ${ok?`<div>⭕ 正解：<b>${z.ans}</b></div>`:`<div>あなたの答え：<s>${esc(mine)}</s></div><div>正解：<b style="color:#047857">${z.ans}</b></div>`}
+    <div class="expl">📖 <b>${z.ans}</b>＝${o.mean}<br>型：${o.pattern}${d?`<br>❗ あなたが選んだ <b>${d[0]}</b> は「${d[1]}」`:""}</div>
+    <div class="ex"><div class="en">${hl(full)} ${spk(full)}</div><div class="ja">${z.ja}</div></div>`}
+  else if(sec==="order"){const sent=o.order.en.replace(/ ([.,])/g,"$1");
+   body=`<div class="small">${o.order.ja}</div>
+    ${ok?"":`<div style="margin-top:4px">あなたの並べ方：<s>${esc(mine)}</s></div>`}
+    <div>正解：<b style="color:#047857">${hl(sent)}</b> ${spk(sent)}</div>
+    <div class="expl">📖 型：${o.pattern}<br>💡 ${o.tip}</div>`}
+  else{const t=o.trans,lab=["❌ ダメ","🔺 おしい","⭕ 書けた"][S.cur.trans[w]];
+   body=`<div class="small">${t.ja}</div>
+    <div style="margin-top:4px">あなたの英文：${esc(mine||"")}　<span class="chip">${lab}</span></div>
+    <div class="model"><b>模範解答</b>${t.model.map(m=>`<div>・${hl(m)} ${spk(m)}</div>`).join("")}</div>
+    <div class="expl">📖 チェックポイント：${t.needLabel}<br>型：${o.pattern}</div>`}
+  return `<div class="fbcard ${ok?'ok':'ng'}"><div class="small"><b style="font-size:16px;color:#1e3a8a">${o.w}</b></div>${body}</div>`};
+ const nextLabel=S.step<3?`${SEC_TITLE[S.step+1]} へ進む`:"結果を見る";
+ const msg=wrong.length===0?(S.round>1?"やり直しで全部クリア！しっかり身につきました。":"全問クリア！このセクションはバッチリです。"):
+  `${n}問中 ${good.length}問クリア。まちがえた ${wrong.map(w=>`<b>${WORDS[w].w}</b>`).join("、")} を下の解説で確認して、もう一度やってみよう。`;
+ $("#app").innerHTML=`<div class="card" style="text-align:center"><div class="small">${SEC_TITLE[S.step]} のふりかえり${S.round>1?`（やり直し ${S.round-1}回目）`:""}</div>
+  <div class="score" style="font-size:44px">${good.length} / ${n}</div><div style="line-height:1.7">${msg}</div></div>
+  ${wrong.length?`<button class="btn primary" onclick="redo()">🔁 まちがえた単語だけもう一度（${wrong.length}語）</button>`:""}
+  ${wrong.length?`<h3 style="margin:16px 4px 8px">❌ まちがえた単語の解説</h3>${wrong.map(card).join("")}`:""}
+  ${good.length?`<details class="card"><summary><b>⭕ できた単語も確認する（${good.length}語）</b></summary>${good.map(card).join("")}</details>`:""}
+  ${wrong.length?`<button class="btn primary" onclick="redo()">🔁 まちがえた単語だけもう一度（${wrong.length}語）</button>`:""}
+  <button class="btn ${wrong.length?'ghost':'primary'}" onclick="go(${S.step+1})">${nextLabel}${wrong.length?'（やり直さずに進む）':''}</button>`;
+ if(!wrong.length&&S.round>1)confetti(false);}
+function redo(){const sec=SEC[S.step];S.list=S.list.filter(w=>!isOk(sec,w));S.i=0;S.review=false;S.round++;render();scrollTo(0,0)}
 
 // 学習モードの結果
+function mk(sec,k){const f=S.res[sec][k],first=sec==="trans"?f===2:f===true;if(first)return'⭕';const a=sec==="trans"?['❌','🔺','⭕'][f??0]:'❌';return isOk(sec,k)?a+'→⭕':a}
 function stepResult(){const q=S.res.quiz.filter(Boolean).length,o=S.res.order.filter(Boolean).length,t=S.res.trans.reduce((a,b)=>a+(b||0),0)/2,
   pct=Math.round((q+o+t)/15*100), lv=pct>=90?'S':pct>=70?'A':'';
  $("#app").innerHTML=`<div class="card" style="text-align:center"><div class="small">学習モードのスコア</div>
@@ -278,8 +320,8 @@ function stepResult(){const q=S.res.quiz.filter(Boolean).length,o=S.res.order.fi
   <div style="font-size:20px;font-weight:bold">${lv==='S'?'🏆 S級合格！':lv==='A'?'🎉 合格！':'あと少し！もう一回やってみよう'}</div>
   <div class="small">合格ライン 70% ／ S級 90%</div></div>
   <div class="card"><table><tr><th>単語</th><th>みわける</th><th>ならべる</th><th>かく</th></tr>
-  ${WORDS.map((w,k)=>`<tr><td><b>${w.w}</b></td><td>${S.res.quiz[k]?'⭕':'❌'}</td><td>${S.res.order[k]?'⭕':'❌'}</td><td>${['❌','🔺','⭕'][S.res.trans[k]??0]}</td></tr>`).join("")}
-  </table></div>
+  ${WORDS.map((w,k)=>`<tr><td><b>${w.w}</b></td><td>${mk('quiz',k)}</td><td>${mk('order',k)}</td><td>${mk('trans',k)}</td></tr>`).join("")}
+  </table><div class="small" style="margin-top:6px">点数は1回目の答えで計算／❌→⭕ ＝ やり直しでクリア</div></div>
   <div class="card" style="background:#eff6ff"><b>次はどうする？</b><div class="small">覚えたか確かめるなら「テストモード」がおすすめ！</div>
   <button class="btn primary" onclick="startTest()">📝 テストモードへ</button>
   <button class="btn ghost" onclick="S={mode:'challenge',c:null};render()">✍️ チャレンジモード（英作文）</button></div>
@@ -299,16 +341,19 @@ function viewHome(){
 // ===== テストモード =====
 const PARTS=["スペル","意味","語法"];
 const PART_LABEL={"スペル":"Part 1　スペル（書けるかな？）","意味":"Part 2　意味（わかるかな？）","語法":"Part 3　語法・コロケーション（使えるかな？）"};
-function startTest(list){const src=list||TEST;
- const qs=PARTS.flatMap(p=>shuffle(src.filter(x=>x.type===p))).map(x=>{const c={...x};if(c.opts){c.order=shuffle(c.opts.map((_,i)=>i))}return c});
- S={mode:"test",phase:"run",qs,k:0,ans:[]};render();scrollTo(0,0)}
+TEST.forEach((q,i)=>q.id=i);
+function prepQ(q){const c={...q};if(c.opts)c.order=shuffle(c.opts.map((_,i)=>i));return c}
+function startTest(){S={mode:"test",phase:"run",part:0,round:1,k:0,first:{},last:{},ans:{}};startPart();render();scrollTo(0,0)}
+function startPart(){S.cur=shuffle(TEST.filter(x=>x.type===PARTS[S.part])).map(prepQ);S.k=0;S.round=1;S.phase="run"}
 function lev(a,b){const d=[...Array(a.length+1)].map((_,i)=>[i,...Array(b.length).fill(0)]);for(let j=1;j<=b.length;j++)d[0][j]=j;
  for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[a.length][b.length]}
 function judge(q,a){if(q.type==="スペル"){const v=(a||"").trim().toLowerCase();return v===q.ans}return a===q.ans}
-function testAnswer(a){S.ans[S.k]=a;S.k++;if(S.k>=S.qs.length)S.phase="result";render();scrollTo(0,0)}
+function testAnswer(a){const q=S.cur[S.k],ok=judge(q,a);S.ans[q.id]=a;S.last[q.id]=ok;if(S.first[q.id]===undefined)S.first[q.id]=ok;
+ S.k++;if(S.k>=S.cur.length)S.phase="partReview";render();scrollTo(0,0)}
+function ansText(q){let at=q.type==="スペル"?q.ans:q.opts[q.ans];if(q.q.startsWith("___"))at=at[0].toUpperCase()+at.slice(1);return at}
 
-function viewTest(){if(S.phase==="result")return testResult();
- const q=S.qs[S.k],n=S.qs.length,newPart=S.k===0||S.qs[S.k-1].type!==q.type;
+function viewTest(){if(S.phase==="result")return testResult();if(S.phase==="partReview")return partReview();
+ const q=S.cur[S.k],n=S.cur.length;
  let body="";
  if(q.type==="スペル"){
   body=`<div class="small">日本語の意味に合う単語を<b>キーボードで</b>書こう</div>
@@ -321,53 +366,62 @@ function viewTest(){if(S.phase==="result")return testResult();
    <div class="q">${q.type==="意味"?`<span style="font-size:30px;font-weight:bold;color:#1e3a8a">${q.q}</span> ${spk(q.q)}`:esc(q.q).replace("___",'<span class="blank">？</span>')}</div>
    ${q.order.map(i=>`<button class="choice" onclick="testAnswer(${i})">${esc(q.opts[i])}</button>`).join("")}`;
  }
- $("#app").innerHTML=`<div class="progress">📝 テスト ${S.k+1} / ${n}</div>
+ $("#app").innerHTML=`<div class="part">${PART_LABEL[q.type]}${S.round>1?'　🔁 やり直し':''}</div>
+  <div class="progress">📝 ${S.k+1} / ${n}</div>
   <div style="height:6px;background:#e5e7eb;border-radius:3px;margin-bottom:10px"><div style="height:6px;width:${S.k/n*100}%;background:#2563eb;border-radius:3px"></div></div>
-  ${newPart?`<div class="part">${PART_LABEL[q.type]}</div>`:""}
-  <div class="card">${body}</div><div class="small" style="text-align:center">答え合わせはテストの最後にまとめて行います</div>`;
+  <div class="card">${body}</div><div class="small" style="text-align:center">答え合わせはこのPartの最後にまとめて行います</div>`;
  if(q.type==="スペル"){const i=$("#sp");i.focus();const f=()=>{if(!i.value.trim()){alert("書いてみよう！わからなければ思いつく形でOK");return}testAnswer(i.value)};
   $("#go").onclick=f;i.onkeydown=e=>{if(e.key==="Enter")f()}}}
 
-function testResult(){const qs=S.qs,ok=qs.map((q,k)=>judge(q,S.ans[k])),score=ok.filter(Boolean).length,n=qs.length,pct=Math.round(score/n*100),
-  lv=pct>=90?'S':pct>=70?'A':'';
- // タイプ別・単語別
- const byType=PARTS.map(p=>{const idx=qs.map((q,k)=>q.type===p?k:-1).filter(k=>k>=0);return{p,ok:idx.filter(k=>ok[k]).length,all:idx.length}}).filter(x=>x.all);
- const words=[...new Set(qs.map(q=>q.w))];
- const cell=(w,p)=>{const k=qs.findIndex(q=>q.w===w&&q.type===p);return k<0?'－':ok[k]?'⭕':'❌'};
- const weakWords=words.filter(w=>qs.some((q,k)=>q.w===w&&!ok[k]));
+function qCard(q,a,good){let mine;
+ if(q.type==="スペル"){const v=(a||"").trim();mine=esc(v||"（空欄）");const d=lev(v.toLowerCase(),q.ans);if(!good&&d<=2)mine+=` <span class="near">おしい！あと${d}文字</span>`;}
+ else mine=esc(q.opts[a]);
+ const at=ansText(q),full=q.type==="意味"?q.ex:q.q.replace("___",at),right=q.type==="スペル"?q.ans:q.opts[q.ans];
+ return `<div class="fbcard ${good?'ok':'ng'}"><div class="small">${q.type}｜<b>${q.w}</b></div>
+  <div class="q" style="margin:4px 0">${q.type==="意味"?`<b>${q.q}</b> の意味`:esc(q.q).replace("___",'<span class="blank">'+(good?esc(at):'？')+'</span>')}</div>
+  ${good?`<div>⭕ 正解：<b>${esc(right)}</b></div>`:`<div>あなたの答え：<s>${mine}</s></div><div>正解：<b style="color:#047857">${esc(right)}</b></div>`}
+  <div class="expl">📖 ${q.fb}</div>
+  ${full?`<div class="ex"><div class="en">${hl(full)} ${spk(full)}</div>${q.ja?`<div class="small">${q.ja}</div>`:""}</div>`:""}</div>`}
+
+const PART_ADVICE={"スペル":"スペルは、声に出して読みながらノートに3回ずつ書くと手が覚えます。",
+ "意味":"意味があいまいな単語は、学習モードの「であう」で例文ごと読み直すとイメージで覚えられます。",
+ "語法":"語法・コロケーションは、単語だけでなく「allow 人 to 〜」「aware of」のように<b>前後のセットごと</b>覚えるのがコツです。"};
+function partReview(){const type=PARTS[S.part],qs=S.cur,ok=qs.map(q=>S.last[q.id]),good=ok.filter(Boolean).length,n=qs.length;
+ const wrong=qs.filter((q,k)=>!ok[k]),right=qs.filter((q,k)=>ok[k]);
+ const nextLabel=S.part<2?`${PART_LABEL[PARTS[S.part+1]].split("　")[0]}へ進む`:"テストの結果を見る";
+ const msg=!wrong.length?(S.round>1?"やり直しで全部クリア！よくがんばりました。":"全問正解！このPartはバッチリです。"):
+  `${n}問中 ${good}問正解。${PART_ADVICE[type]} 下の解説を読んでから、まちがえた問題だけもう一度やってみよう。`;
+ $("#app").innerHTML=`<div class="part">${PART_LABEL[type]}　ふりかえり${S.round>1?`（やり直し ${S.round-1}回目）`:""}</div>
+  <div class="card" style="text-align:center"><div class="score" style="font-size:44px">${good} / ${n}</div><div style="line-height:1.7">${msg}</div></div>
+  ${wrong.length?`<button class="btn primary" onclick="testRedo()">🔁 まちがえた問題だけもう一度（${wrong.length}問）</button>`:""}
+  ${wrong.length?`<h3 style="margin:16px 4px 8px">❌ まちがえた問題の解説</h3>${wrong.map(q=>qCard(q,S.ans[q.id],false)).join("")}`:""}
+  ${right.length?`<details class="card"><summary><b>⭕ 正解した問題も確認する（${right.length}問）</b></summary>${right.map(q=>qCard(q,S.ans[q.id],true)).join("")}</details>`:""}
+  ${wrong.length?`<button class="btn primary" onclick="testRedo()">🔁 まちがえた問題だけもう一度（${wrong.length}問）</button>`:""}
+  <button class="btn ${wrong.length?'ghost':'primary'}" onclick="testNextPart()">${nextLabel}${wrong.length?'（やり直さずに進む）':''}</button>`;
+ if(!wrong.length&&S.round>1)confetti(false);}
+function testRedo(){S.cur=shuffle(S.cur.filter(q=>!S.last[q.id])).map(q=>prepQ(TEST[q.id]));S.k=0;S.round++;S.phase="run";render();scrollTo(0,0)}
+function testNextPart(){S.part++;if(S.part>=PARTS.length){S.phase="result"}else startPart();render();scrollTo(0,0)}
+
+function testResult(){const n=TEST.length,score=TEST.filter(q=>S.first[q.id]).length,pct=Math.round(score/n*100),lv=pct>=90?'S':pct>=70?'A':'';
+ const byType=PARTS.map(p=>{const qs=TEST.filter(q=>q.type===p);return{p,ok:qs.filter(q=>S.first[q.id]).length,all:qs.length}});
+ const words=[...new Set(TEST.map(q=>q.w))];
+ const cell=(w,p)=>{const q=TEST.find(q=>q.w===w&&q.type===p);if(!q||S.first[q.id]===undefined)return'－';return S.first[q.id]?'⭕':S.last[q.id]?'❌→⭕':'❌'};
+ const still=words.filter(w=>TEST.some(q=>q.w===w&&S.last[q.id]===false));
+ const fixed=TEST.filter(q=>S.first[q.id]===false&&S.last[q.id]).length;
  const weakType=byType.filter(x=>x.ok<x.all).sort((a,b)=>a.ok/a.all-b.ok/b.all)[0];
- const ADVICE={"スペル":"スペルを落としやすいようです。声に出して読みながら、ノートに3回ずつ書くと手が覚えます。",
-  "意味":"意味がまだあいまいな単語があります。学習モードの「であう」で例文ごと読み直すと、イメージで覚えられます。",
-  "語法":"語法・コロケーションで迷っています。単語だけでなく「allow 人 to 〜」「aware of」のように<b>前後のセットごと</b>覚えるのがコツです。"};
- const msg=score===n?"全問正解！意味・スペル・使い方まで完璧です。この5語は英作文でも自信を持って使えます。":
-  `${score}問正解です。${weakType?ADVICE[weakType.p]:""} 下の解説で、まちがえた問題を1問ずつ確認しよう。`;
- const card=(q,k)=>{const a=S.ans[k],good=ok[k];
-  let mine,right;
-  if(q.type==="スペル"){const v=(a||"").trim();mine=esc(v||"（空欄）");right=q.ans;
-   const d=lev(v.toLowerCase(),q.ans);if(!good&&d<=2)mine+=` <span class="near">おしい！あと${d}文字</span>`;}
-  else{mine=esc(q.opts[a]);right=q.opts[q.ans]}
-  let at=q.type==="スペル"?q.ans:q.opts[q.ans];if(q.q.startsWith("___"))at=at[0].toUpperCase()+at.slice(1);
-  const full=q.type==="意味"?q.ex:q.q.replace("___",at);
-  const fullJa=q.ja?`<div class="small">${q.ja}</div>`:"";
-  return `<div class="fbcard ${good?'ok':'ng'}"><div class="small">${q.type}｜<b>${q.w}</b></div>
-   <div class="q" style="margin:4px 0">${q.type==="意味"?`<b>${q.q}</b> の意味`:esc(q.q).replace("___",'<span class="blank">'+(good?esc(at):'？')+'</span>')}</div>
-   ${good?`<div>⭕ 正解：<b>${esc(right)}</b></div>`:`<div>あなたの答え：<s>${mine}</s></div><div>正解：<b style="color:#047857">${esc(right)}</b></div>`}
-   <div class="expl">📖 ${q.fb}</div>
-   ${full?`<div class="ex"><div class="en">${hl(full)} ${spk(full)}</div>${fullJa}</div>`:""}</div>`};
- const wrong=qs.map((q,k)=>k).filter(k=>!ok[k]),right=qs.map((q,k)=>k).filter(k=>ok[k]);
- $("#app").innerHTML=`<div class="card" style="text-align:center"><div class="small">テスト結果</div>
+ const msg=score===n?"1回目で全問正解！意味・スペル・使い方まで完璧です。この5語は英作文でも自信を持って使えます。":
+  `1回目の正解は ${score}問。${fixed?`まちがえた問題のうち ${fixed}問は、やり直しでクリアできました。`:""}${weakType?`いちばん伸びしろがあるのは「${weakType.p}」です。${PART_ADVICE[weakType.p]}`:""}`;
+ $("#app").innerHTML=`<div class="card" style="text-align:center"><div class="small">テスト結果（1回目の答えで採点）</div>
   <div class="score ${lv==='S'?'gold':''}">${score} / ${n}</div>
-  <div style="font-size:20px;font-weight:bold">${lv==='S'?'🏆 S級合格！':lv==='A'?'🎉 合格！':'もう少し！解説を読んで再チャレンジ'}</div>
+  <div style="font-size:20px;font-weight:bold">${lv==='S'?'🏆 S級合格！':lv==='A'?'🎉 合格！':'もう少し！'}</div>
   <div class="small">合格ライン 70% ／ S級 90%（正答率 ${pct}%）</div></div>
   <div class="card"><b>👩‍🏫 先生からのひとこと</b><div style="margin-top:6px;line-height:1.7">${msg}</div>
   <div style="display:flex;gap:6px;margin-top:10px">${byType.map(x=>`<div class="typebox"><div class="small">${x.p}</div><b>${x.ok}/${x.all}</b></div>`).join("")}</div></div>
   <div class="card"><b>単語ごとの結果</b><table style="margin-top:6px"><tr><th>単語</th><th>スペル</th><th>意味</th><th>語法</th></tr>
   ${words.map(w=>`<tr><td><b>${w}</b> ${spk(w)}</td><td>${cell(w,"スペル")}</td><td>${cell(w,"意味")}</td><td>${cell(w,"語法")}</td></tr>`).join("")}</table>
-  ${weakWords.length?`<div class="small" style="margin-top:6px">🔁 要復習：${weakWords.map(w=>`<b>${w}</b>`).join("、")}</div>`:""}</div>
-  ${wrong.length?`<h3 style="margin:16px 4px 8px">❌ まちがえた問題の解説（${wrong.length}問）</h3>${wrong.map(k=>card(qs[k],k)).join("")}`:""}
-  ${right.length?`<details class="card"><summary><b>⭕ 正解した問題も確認する（${right.length}問）</b></summary>${right.map(k=>card(qs[k],k)).join("")}</details>`:""}
-  ${wrong.length?`<button class="btn primary" onclick="startTest(S.qs.filter((q,k)=>!${JSON.stringify(ok)}[k]).map(({order,...q})=>q))">🔁 まちがえた問題だけもう一度</button>`:""}
-  <button class="btn ghost" onclick="startTest()">テストをはじめからやり直す</button>
+  <div class="small" style="margin-top:6px">❌→⭕ ＝ やり直しでクリア</div>
+  ${still.length?`<div class="small" style="margin-top:4px">🔁 まだ要復習：${still.map(w=>`<b>${w}</b>`).join("、")}</div>`:""}</div>
+  <button class="btn primary" onclick="startTest()">テストをはじめからやり直す</button>
   <button class="btn ghost" onclick="S={mode:'challenge',c:null};render()">✍️ チャレンジモード（英作文）へ</button>
   <button class="btn ghost" onclick="home()">ホームへ</button>`;
  if(lv)confetti(lv==='S');}
